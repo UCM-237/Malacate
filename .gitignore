@@ -1,0 +1,4 @@
+.vscode/
+logs/*.csv
+onda_cuadrada
+*.o
