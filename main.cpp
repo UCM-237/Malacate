@@ -30,12 +30,12 @@ int main(){
     int duty = 90;
     double t;          // tiempo de parado
     double lc = 0;
-    double nv = 0;
+    int nv = 0;
     int s = 1;
     
     // variables de comunicacion 
     int st=0;
-    int pr=0;
+    // int pr=0;
     int tm=0;
     int sp=0;
     int tem=0;
@@ -51,8 +51,8 @@ int main(){
     // Inicalizacion
     int control1;
     int out=0;
-    int out1=0;
-    int m=0;
+    // int out1=0;
+    // int m=0;
     float prr=5;  // Profundidad de bajada (default value)
     
     wiringPiSetupGpio(); // Configuración para usar el número de pin GPIO
@@ -77,7 +77,7 @@ int main(){
     //this_thread::sleep_for(chrono::milliseconds(3000));
 
     // Iniciamos la lectura en un hilo
-    iniciarLecturaEnHilo(st, sp, tem, pr, tm, ft, home, pr1);
+    iniciarLecturaEnHilo(st, sp, tem, prr, tm, ft, home);
 
    
    
@@ -103,6 +103,10 @@ int main(){
 
     
     while(true){
+
+        nv = (int)(prr*3.5); // Aproximacion para saber el numero de vueltas
+        printf("Profundidad maxima: %f,  %d \n", prr, nv);
+
         // Motor parado esperando datos     
         if(st==0 && sp==0 && tem==0){
             pr1=prof;         
@@ -114,9 +118,7 @@ int main(){
             ft = 0;
             control1=0;
             control=0;
-            nv=33;
-           
-            
+            // nv=36;  // Profundidad en vueltas
 
         }
         

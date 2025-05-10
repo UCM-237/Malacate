@@ -1,4 +1,5 @@
 #include "serial_reader.h"
+#include "sonda.h"
 #include <iostream>
 #include <string.h>
 #include <cstring>
@@ -15,6 +16,8 @@
 // Variables de tiempo
 std::string sessionTimestamp;          // Variable para almacenar el tiempo global
 std::atomic<bool> sessionReady(false); // Indica si ya está disponible (necesita gps fix)
+
+// std::atomic<float> prof(0); // Profundidad actual de sonda
 
 
 // Estructura del mensaje de Log
@@ -49,7 +52,7 @@ std::string gpsTimeToString(uint16_t week, uint32_t tow) {
     constexpr time_t gps_epoch = 315964800; // en segundos desde Unix epoch (1970-01-01)
     
     // Segundos totales desde epoch GPS
-    uint64_t gps_seconds = static_cast<uint64_t>(week) * 7 * 24 * 3600 + tow;
+    uint64_t gps_seconds = static_cast<uint64_t>(week) * 7 * 24 * 3600 + (int)(tow/1000);
     
     // Convertir a epoch Unix
     time_t unix_time = gps_epoch + gps_seconds;
@@ -158,7 +161,7 @@ void sendOKMessage(int fd, uint16_t depth, int ft, int home) {
 
 // prof es la profundidad actual (la que mide el sensor)
 // pr es la maxima (la que se recibe por el puerto serie)
-void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home, float &prof) {
+void leerSerial(int &st, int &sp, int &tem, float& pr, int& tm, int &ft, int &home) {
     int serial_port = serialOpen("/dev/serial0", 115200);  // Abre el puerto serial en el dispositivo con velocidad 115200 baudios
     if (serial_port == -1) {
         std::cerr << "Error al abrir el puerto serial." << std::endl;
@@ -255,6 +258,7 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
                 // uint16_t tiempo = buffer[9] | (buffer[8] << 8); 
 
                 // printf("Profuncidad Recibida = %f m\n", ((float)(profundidad))/1000);
+                // printf("Profuncidad Recibida = %f m\n", pr);
                 //std:: cout <<  "Parado. Profundidad  " <<  prof << std:: endl;
                 
 
@@ -293,9 +297,10 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
 
         // ENVIO DE MENSAJES A PAPARAZZI
         // Hay que mandar prof*1000 (en mm) 
-        int prof1 = ((rand()%20)*1000); // TEST, BORRAR
-        // printf("Profundidad enviada %f m\n", ((float)(prof1))/1000);
-        sendOKMessage(serial_port, prof1, ft, home);
+        // int prof1 = ((rand()%20)*1000); // TEST, BORRAR
+        uint16_t prof_send = (uint16_t)(prof*1000);
+        // printf("Profundidad Enviada: %d \n", prof_send);
+        sendOKMessage(serial_port, prof_send, ft, home);
 
     }
 
@@ -303,8 +308,8 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
 }
 
 // Esta función ejecuta `leerSerial()` en un hilo separado
-void iniciarLecturaEnHilo(int &st, int &sp, int &tem, int &pr, int &tm, int &ft, int &home, float &prof) {
-    std::thread hiloLectura(leerSerial, std::ref(st), std::ref(sp), std::ref(tem), std::ref(pr), std::ref(tm), std::ref(ft), std::ref(home),  std::ref(prof));  // Crear un hilo que ejecute leerSerial
+void iniciarLecturaEnHilo(int &st, int &sp, int &tem, float &pr, int &tm, int &ft, int &home) {
+    std::thread hiloLectura(leerSerial, std::ref(st), std::ref(sp), std::ref(tem), std::ref(pr), std::ref(tm), std::ref(ft), std::ref(home));  // Crear un hilo que ejecute leerSerial
     hiloLectura.detach();  // Desvincula el hilo para que se ejecute independientemente
 }
 

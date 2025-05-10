@@ -12,10 +12,10 @@ extern std::string sessionTimestamp;
 extern std::atomic<bool> sessionReady;
 
 // Función para leer datos desde el puerto serial y actualizar las variables
-void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int& ft, int& home, float& prof);
+void leerSerial(int &st, int &sp, int &tem, float& pr, int& tm, int& ft, int& home);
 
 // Función para iniciar la lectura en un hilo
-void iniciarLecturaEnHilo(int &st, int &sp, int &tem, int& pr, int& tm, int& ft,  int& home, float& prof);
+void iniciarLecturaEnHilo(int &st, int &sp, int &tem, float& pr, int& tm, int& ft,  int& home);
 
 #endif
 
