@@ -75,7 +75,7 @@ float read_float_inverse(modbus_t* ctx, int addr) {
 // }
 
 
-std::ofstream createCSV_probe(uint8_t profile, std::string time_string) {
+std::ofstream createCSV_probe(std::string time_string) {
     
     // No estoy comprobando si existe la carpeta
 
@@ -87,8 +87,6 @@ std::ofstream createCSV_probe(uint8_t profile, std::string time_string) {
     // printf("Profile %d \n", profile);
     filename << "logs/sonda/sonda_"
              << time_string
-             << "_profile"
-             <<  static_cast<int>(profile)
              << ".csv";
 
     std::ofstream file(filename.str(), std::ios::out | std::ios::app);
@@ -100,21 +98,21 @@ std::ofstream createCSV_probe(uint8_t profile, std::string time_string) {
     }
 
     // Cabecera
-    file << "Tiempo,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
+    file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
 
     return file;
 }
 
 
 
-void appendToCSV(std::ofstream& file, const std::vector<float>& datos) {
+void appendToCSV_probe(std::ofstream& file, const std::vector<float>& datos, uint8_t profile) {
 
     // Tiempo actual como string YYYY-MM-DD HH:MM:SS
     auto now = std::chrono::system_clock::now();
     auto t = std::chrono::system_clock::to_time_t(now);
     std::tm tm = *std::localtime(&t);
 
-    file << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    file << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << "," << static_cast<int>(profile);
 
     for (const auto& valor : datos) {
         file << "," << valor;
@@ -142,7 +140,7 @@ void sonda() {
 
     std::ofstream sondaFile;  // Crea el CSV (uno por perfil), se crean mas adelante
     bool measure_flag = false;
-    uint8_t profile = 0;
+    // uint8_t profile = 0; // Now global (delete)
 
     //std::cout << "[INFO] Iniciando lectura en hilo. Presiona Ctrl+C para salir...\n";
 
@@ -158,8 +156,13 @@ void sonda() {
         prof= datos[0];
         //std::cout << "Profundidad:     " << datos[0] << "\n";
 
-        if (isnan(prof) || prof < 0)
+        if (isnan(prof)){
             prof=0.0;
+        }
+        else if(prof < 0){
+            // prof = abs(prof);
+            prof = 0.0;
+        }
 
         
         /*
@@ -171,21 +174,18 @@ void sonda() {
         std::cout << "Blue:            " << datos[5] << "\n";
         std::cout << "Chl:             " << datos[6] << "\n";
         */
+        
 
-        // prof = 5;  // For testing in the lab
         // Almacenamiento en el csv
+        // prof = 5;  // For testing in the lab
         if(sessionReady.load()){
             if (prof != 0){
-                // Nueva medida
+                uint8_t perfil_actual = currentProfile.load();
                 if (!measure_flag){
-                    profile++;
-                    sondaFile = createCSV_probe(profile, sessionTimestamp);
+                    sondaFile = createCSV_probe(sessionTimestamp);
                     measure_flag = true;
                 }
-                appendToCSV(sondaFile, datos);
-            }
-            else{
-                measure_flag = false;
+                appendToCSV_probe(sondaFile, datos, perfil_actual);
             }
         }
         

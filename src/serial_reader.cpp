@@ -17,6 +17,9 @@
 std::string sessionTimestamp;          // Variable para almacenar el tiempo global
 std::atomic<bool> sessionReady(false); // Indica si ya está disponible (necesita gps fix)
 
+// Perfil actual de sonda
+std::atomic<uint8_t> currentProfile(0);
+
 // std::atomic<float> prof(0); // Profundidad actual de sonda
 
 
@@ -82,6 +85,7 @@ std::ofstream createCSV_log(std::string time_string) {
              << ".csv";
 
     std::ofstream file(filename.str(), std::ios::out | std::ios::app);
+    file << std::fixed << std::setprecision(8);
     if (!file.is_open()) {
         throw std::runtime_error("No se pudo crear el archivo CSV");
     }
@@ -99,8 +103,8 @@ void appendToCSV(std::ofstream& file, const LogMessage& msg) {
     std::string timeUTC = gpsTimeToString(msg.time_week, msg.time_tow);
 
     file << (float) msg.time/1000 << "," 
-        << (float) msg.lat*1e-7 << ","
-        << (float) msg.lon*1e-7 << ","
+        << (double) msg.lat*1e-7 << ","
+        << (double) msg.lon*1e-7 << ","
         << (float) msg.Ah/100 << ","
         << (int) msg.profile << ","
         << timeUTC << ","
@@ -225,6 +229,10 @@ void leerSerial(int &st, int &sp, int &tem, float& pr, int& tm, int &ft, int &ho
                         sessionReady.store(true);
                         logFile = createCSV_log(sessionTimestamp);
                     }
+
+                    // Actualizamos perfil actual global (para la sonda)
+                    currentProfile.store(msg.profile);
+
                     // Crea el CSV (uno por sesion)
                     appendToCSV(logFile, msg);
                 }

@@ -105,7 +105,7 @@ int main(){
     while(true){
 
         nv = (int)(prr*3.5); // Aproximacion para saber el numero de vueltas
-        printf("Profundidad maxima: %f,  %d \n", prr, nv);
+        // printf("Profundidad maxima: %f,  %d \n", prr, nv);
 
         // Motor parado esperando datos     
         if(st==0 && sp==0 && tem==0){
