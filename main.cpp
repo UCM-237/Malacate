@@ -27,7 +27,7 @@ using namespace std;
 int main(){
     
     int frecuencia = 1000;
-    int duty = 60;
+    int duty = 90;
     double t;          // tiempo de parado
     double lc = 0;
     double nv = 0;
@@ -53,7 +53,7 @@ int main(){
     int out=0;
     int out1=0;
     int m=0;
-    float prr=5;
+    float prr=5;  // Profundidad de bajada (default value)
     
     wiringPiSetupGpio(); // Configuración para usar el número de pin GPIO
 
@@ -114,7 +114,7 @@ int main(){
             ft = 0;
             control1=0;
             control=0;
-            nv=9;
+            nv=33;
            
             
 

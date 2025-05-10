@@ -74,7 +74,7 @@ std::ofstream createCSV_log(std::string time_string) {
     // std::tm tm = *std::localtime(&t);
 
     std::ostringstream filename;
-    filename << "logs/log_"
+    filename << "logs/nav/log_"
              << time_string
              << ".csv";
 
@@ -133,7 +133,6 @@ bool parseLogMessage(const uint8_t* data, size_t len, LogMessage& out) {
 void sendOKMessage(int fd, uint16_t depth, int ft, int home) {
     
     // printf("Profundidad a enviar: %d \n", depth);
-    
     uint8_t message[13];
     uint16_t timestamp = 0; // Ignoramos el tiempo
     message[0] = 'R'; // Byte de sincronía
@@ -148,14 +147,19 @@ void sendOKMessage(int fd, uint16_t depth, int ft, int home) {
     message[9] = 0;
     message[12] = '\n';
 
+    // printf("\n Mensaje enviado: ");
     for (int i = 0; i < 13; i++) {
+        // printf("%02X ", message[i]);
         serialPutchar(fd, message[i]);
     }
+    // printf("\n");
 }
 
+
+// prof es la profundidad actual (la que mide el sensor)
+// pr es la maxima (la que se recibe por el puerto serie)
 void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home, float &prof) {
     int serial_port = serialOpen("/dev/serial0", 115200);  // Abre el puerto serial en el dispositivo con velocidad 115200 baudios
-    int prof1;
     if (serial_port == -1) {
         std::cerr << "Error al abrir el puerto serial." << std::endl;
         return;
@@ -209,7 +213,6 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
             // Procesar mensaje completo -------------------------------
             // Si es el mensaje de log, se parsea y guarda directamente
             if (strncmp(buffer, "PL", 2) == 0) {
-                // std::cout << "\n Mensaje de Log " << buffer << std::endl;
                 // uint16_t time_sec = (uint8_t)buffer[2] << 8 | (uint8_t)buffer[3];
                 LogMessage msg;
                 if (parseLogMessage((uint8_t*)buffer, sizeof(LogMessage), msg)) {
@@ -220,7 +223,6 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
                         logFile = createCSV_log(sessionTimestamp);
                     }
                     // Crea el CSV (uno por sesion)
-                    // printf("Tiempo %f \n", (float) msg.time);
                     appendToCSV(logFile, msg);
                 }
             } 
@@ -228,6 +230,8 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
             // Si es de control, se analiza cual y se cambia lo correspondiente
             else if (strncmp(buffer, "PU", 2) == 0) {
                 //std:: cout "Estoy aqui  " << std::endl;
+                uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
                 st = 0;
                 sp = 1;
                 tem = 0;
@@ -235,6 +239,8 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
                 
             } else if (strncmp(buffer, "PD", 2) == 0) {
                 //std:: cout "Estoy aqui  bajando" << std::endl;
+                uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
                 st = 1;
                 sp = 0;
                 tem = 0;
@@ -245,14 +251,17 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
                 sp = 0;
                 tem = 0;
                 uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
                 // uint16_t tiempo = buffer[9] | (buffer[8] << 8); 
 
-                printf("Profuncidad Recibida = %d \n", profundidad);
-                std:: cout <<  "Parado. Profundidad  " <<  prof << std:: endl;
+                // printf("Profuncidad Recibida = %f m\n", ((float)(profundidad))/1000);
+                //std:: cout <<  "Parado. Profundidad  " <<  prof << std:: endl;
                 
 
                 // web point programar
             } else if (strncmp(buffer, "PA", 2) == 0) {
+                uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
                 st = 0;
                 sp = 0;
                 tem = 1;
@@ -260,22 +269,18 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
                 st = 1;
                 sp = 0;
                 tem = 1; 
-                uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
-                uint16_t tiempo = buffer[9] | (buffer[8] << 8);  
-                pr = profundidad;
-                tm = tiempo; 
-
+                uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);  
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
 
             } else if (strncmp(buffer, "PB", 2) == 0) {
                 // Otro comando
             } else if (strncmp(buffer, "PE", 2) == 0) {
                 uint16_t profundidad =  (buffer[7] | (buffer[6] << 8)) * (buffer[5] ? -1 : 1);
-                uint16_t tiempo = buffer[9] | (buffer[8] << 8);
+                pr = (float) profundidad/1000;   // Establece la profundidad maxima de bajada
+                // uint16_t tiempo = buffer[9] | (buffer[8] << 8);
                 st = 1;
                 sp = 1;
                 tem = 0;
-                pr = profundidad;
-                tm = tiempo;
             }
 
             buffer_index = 0;
@@ -287,7 +292,9 @@ void leerSerial(int &st, int &sp, int &tem, int& pr, int& tm, int &ft, int &home
         }
 
         // ENVIO DE MENSAJES A PAPARAZZI
-        prof1 = 4.54*1000; // TEST, BORRAR
+        // Hay que mandar prof*1000 (en mm) 
+        int prof1 = ((rand()%20)*1000); // TEST, BORRAR
+        // printf("Profundidad enviada %f m\n", ((float)(prof1))/1000);
         sendOKMessage(serial_port, prof1, ft, home);
 
     }

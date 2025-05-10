@@ -84,15 +84,19 @@ std::ofstream createCSV_probe(uint8_t profile, std::string time_string) {
     // std::tm tm = *std::localtime(&t);
 
     std::ostringstream filename;
-    filename << "logs/sonda_"
+    // printf("Profile %d \n", profile);
+    filename << "logs/sonda/sonda_"
              << time_string
              << "_profile"
-             << profile
+             <<  static_cast<int>(profile)
              << ".csv";
 
     std::ofstream file(filename.str(), std::ios::out | std::ios::app);
     if (!file.is_open()) {
         throw std::runtime_error("No se pudo crear el archivo CSV");
+    }
+    else{
+        printf("Created CSV for the Probe ... \n");
     }
 
     // Cabecera
@@ -168,6 +172,7 @@ void sonda() {
         std::cout << "Chl:             " << datos[6] << "\n";
         */
 
+        // prof = 5;  // For testing in the lab
         // Almacenamiento en el csv
         if(sessionReady.load()){
             if (prof != 0){
@@ -179,7 +184,9 @@ void sonda() {
                 }
                 appendToCSV(sondaFile, datos);
             }
-            measure_flag = false;
+            else{
+                measure_flag = false;
+            }
         }
         
         sleep(5);

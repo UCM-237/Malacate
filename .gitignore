@@ -1,4 +1,5 @@
 .vscode/
-logs/*.csv
+logs/nav/*.csv
+logs/sonda/*.csv
 onda_cuadrada
 *.o
