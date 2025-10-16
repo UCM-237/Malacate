@@ -22,24 +22,30 @@
 #define BAUDRATE   9600
 #define MODBUS_ID  80
 
+// Change this to choose between the two probes
+// #define SONDA_OLD
+#define SONDA_NEW
+
 std::atomic<float> prof(0);
 
+#ifdef SONDA_OLD
 const int direcciones[] = {
-    40011, 40029, 40031, 40033, 40035, 40037, 40039
+    10, 19, 21, 23, 25, 27, 29
 };
+#elif defined(SONDA_NEW)
+const int direcciones[] = {
+    30101, 31001, 31101, 31201, 31301, 31401, 31501, 31601
+};
+#else
+#error "Debe definir SONDA_OLD o SONDA_NEW"
+#endif
 
 volatile bool keepRunning = true;
 
-/*
-void signalHandler(int) {
-    std::cout << "\n[!] Interrupción recibida. Terminando...\n";
-    keepRunning = false;
-}
-*/
 
 float read_float_inverse(modbus_t* ctx, int addr) {
     uint16_t regs[2];
-    if (modbus_read_registers(ctx, addr - 40001, 2, regs) != 2) {
+    if (modbus_read_registers(ctx, addr, 2, regs) != 2) {
         //std::cerr << "Error leyendo en dirección " << addr << ": "
                   //<< modbus_strerror(errno) << std::endl;
         return NAN;
@@ -49,30 +55,6 @@ float read_float_inverse(modbus_t* ctx, int addr) {
     std::memcpy(&result, swapped, sizeof(float));
     return result;
 }
-
-// void guardar_datos_csv(const std::vector<float>& datos) {
-//     std::ofstream archivo("datos_sensor.csv", std::ios::app);
-
-//     if (!archivo.is_open()) {
-//         std::cerr << "No se pudo abrir el archivo CSV para escritura.\n";
-//         return;
-//     }
-
-//     static bool encabezado_escrito = false;
-//     if (!encabezado_escrito) {
-//         archivo << "Tiempo,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
-//         encabezado_escrito = true;
-//     }
-
-//     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-//     archivo << std::ctime(&now);
-//     for (const auto& valor : datos) {
-//         archivo << "," << valor;
-//     }
-//     archivo << "\n";
-
-//     archivo.close();
-// }
 
 
 std::ofstream createCSV_probe(std::string time_string) {
@@ -98,7 +80,11 @@ std::ofstream createCSV_probe(std::string time_string) {
     }
 
     // Cabecera
-    file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
+    #ifdef SONDA_OLD
+        file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
+    #elif defined(SONDA_NEW)
+        file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl,C\n";
+    #endif
 
     return file;
 }
@@ -173,20 +159,22 @@ void sonda() {
         std::cout << "DO:              " << datos[4] << "\n";
         std::cout << "Blue:            " << datos[5] << "\n";
         std::cout << "Chl:             " << datos[6] << "\n";
+        std::cout << "C:               " << datos[7] << "\n \n";
         */
         
 
         // Almacenamiento en el csv
         // prof = 5;  // For testing in the lab
         if(sessionReady.load()){
-            if (prof != 0){
-                uint8_t perfil_actual = currentProfile.load();
-                if (!measure_flag){
-                    sondaFile = createCSV_probe(sessionTimestamp);
-                    measure_flag = true;
-                }
-                appendToCSV_probe(sondaFile, datos, perfil_actual);
+            uint8_t perfil_actual = currentProfile.load();
+            if (prof <= 0){
+                perfil_actual = 0;
             }
+            if (!measure_flag){
+                sondaFile = createCSV_probe(sessionTimestamp);
+                measure_flag = true;
+            }
+            appendToCSV_probe(sondaFile, datos, perfil_actual);
         }
         
         sleep(5);
