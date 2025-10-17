@@ -33,6 +33,10 @@ const int direcciones[] = {
     10, 19, 21, 23, 25, 27, 29
 };
 #elif defined(SONDA_NEW)
+#define REG_TIME_BASE   10      // Base address for time (3 regs)
+#define REG_MODE        20120
+#define REG_PERIOD      20124
+#define REG_CONFIRM     20199
 const int direcciones[] = {
     30101, 31001, 31101, 31201, 31301, 31401, 31501, 31601
 };
@@ -56,6 +60,73 @@ float read_float_inverse(modbus_t* ctx, int addr) {
     return result;
 }
 
+
+#ifdef SONDA_NEW
+
+// Estas funciones solo aplican para la sonda nueva
+
+// Cambia la hora del sistema remoto (3 registros: yymm, ddhh, mmss)
+bool change_time(modbus_t* ctx,
+                 uint16_t year, uint16_t month, uint16_t day,
+                 uint16_t hour, uint16_t minute, uint16_t second){
+    uint16_t regs_time[3];
+
+    uint16_t yy = year % 100;
+    regs_time[0] = (yy << 8) | month;        // yymm
+    regs_time[1] = (day << 8) | hour;        // ddhh
+    regs_time[2] = (minute << 8) | second;   // mmss
+
+    int n = modbus_write_registers(ctx, REG_TIME_BASE, 3, regs_time);
+    if (n == -1) {
+        std::cerr << "Error writing time: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    std::cout << "[OK] Time set: "
+              << std::setfill('0') << std::setw(2) << yy << "/"
+              << std::setw(2) << month << " "
+              << std::setw(2) << day << " "
+              << std::setw(2) << hour << ":"
+              << std::setw(2) << minute << ":"
+              << std::setw(2) << second << std::endl;
+    return true;
+}
+
+
+// Cambia el modo de adquisición (puntual / continuo) y el periodo
+bool change_mode(modbus_t* ctx, uint8_t mode, uint16_t period_ms){
+    // mode: 0 = puntual, 1 = continuo
+    uint16_t reg_type[1]   = { mode };
+    uint16_t reg_period[1] = { period_ms };
+    uint16_t reg_confirm[1]= { 0x01 };
+
+    int n;
+
+    n = modbus_write_registers(ctx, REG_MODE, 1, reg_type);
+    if (n == -1) {
+        std::cerr << "Error writing mode: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    n = modbus_write_registers(ctx, REG_PERIOD, 1, reg_period);
+    if (n == -1) {
+        std::cerr << "Error writing period: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    n = modbus_write_registers(ctx, REG_CONFIRM, 1, reg_confirm);
+    if (n == -1) {
+        std::cerr << "Error writing confirm: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    std::cout << "[OK] Mode set to "
+              << (mode == 0 ? "Punctual" : "Continuous")
+              << " | Period = " << period_ms << " ms" << std::endl;
+    return true;
+}
+
+#endif // SONDA_NEW
 
 std::ofstream createCSV_probe(std::string time_string) {
     
@@ -88,7 +159,6 @@ std::ofstream createCSV_probe(std::string time_string) {
 
     return file;
 }
-
 
 
 void appendToCSV_probe(std::ofstream& file, const std::vector<float>& datos, uint8_t profile) {
