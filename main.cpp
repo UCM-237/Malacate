@@ -18,6 +18,7 @@
 #include "lib/ambulanceSiren.h"
 #include "lib/serial_reader.h"
 //#include "lib/autoManual.h"
+#include "lib/aux.h"
 
 
 using namespace std;
@@ -104,7 +105,8 @@ int main(){
     
     while(true){
 
-        nv = (int)(prr*3.5); // Aproximacion para saber el numero de vueltas
+        // nv = (int)(prr*3.5); // Aproximacion para saber el numero de vueltas (version antigua)
+        nv = calcularVueltas(prr);
         // printf("Profundidad maxima: %f,  %d \n", prr, nv);
 
         // Motor parado esperando datos     
@@ -316,8 +318,7 @@ int main(){
             ft=1;
             this_thread::sleep_for(chrono::seconds(2));                      
         }
-
-    }    
+    }
 
   
 

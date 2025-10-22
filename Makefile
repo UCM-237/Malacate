@@ -21,7 +21,7 @@ LIB_DIR = lib
 SRC_DIR = src
 
 
-SRC_FILES =  $(SRC_DIR)/ambulanceSiren.cpp $(SRC_DIR)/arriba.cpp $(SRC_DIR)/abajo.cpp $(SRC_DIR)/casa.cpp $(SRC_DIR)/serial_reader.cpp $(SRC_DIR)/generarOndaCuadrada.cpp $(SRC_DIR)/sonda.cpp $(SRC_DIR)/sensor.cpp main.cpp
+SRC_FILES =  $(SRC_DIR)/ambulanceSiren.cpp $(SRC_DIR)/arriba.cpp $(SRC_DIR)/aux.cpp $(SRC_DIR)/abajo.cpp $(SRC_DIR)/casa.cpp $(SRC_DIR)/serial_reader.cpp $(SRC_DIR)/generarOndaCuadrada.cpp $(SRC_DIR)/sonda.cpp $(SRC_DIR)/sensor.cpp main.cpp
 OBJ_FILES = $(SRC_FILES:.cpp=.o)
 
 
