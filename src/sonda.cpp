@@ -22,24 +22,34 @@
 #define BAUDRATE   9600
 #define MODBUS_ID  80
 
+// Change this to choose between the two probes
+// #define SONDA_OLD
+#define SONDA_NEW
+
 std::atomic<float> prof(0);
 
+#ifdef SONDA_OLD
 const int direcciones[] = {
-    40011, 40029, 40031, 40033, 40035, 40037, 40039
+    10, 19, 21, 23, 25, 27, 29
 };
+#elif defined(SONDA_NEW)
+#define REG_TIME_BASE   10      // Base address for time (3 regs)
+#define REG_MODE        20120
+#define REG_PERIOD      20124
+#define REG_CONFIRM     20199
+const int direcciones[] = {
+    30101, 31001, 31101, 31201, 31301, 31401, 31501, 31601
+};
+#else
+#error "Debe definir SONDA_OLD o SONDA_NEW"
+#endif
 
 volatile bool keepRunning = true;
 
-/*
-void signalHandler(int) {
-    std::cout << "\n[!] Interrupción recibida. Terminando...\n";
-    keepRunning = false;
-}
-*/
 
 float read_float_inverse(modbus_t* ctx, int addr) {
     uint16_t regs[2];
-    if (modbus_read_registers(ctx, addr - 40001, 2, regs) != 2) {
+    if (modbus_read_registers(ctx, addr, 2, regs) != 2) {
         //std::cerr << "Error leyendo en dirección " << addr << ": "
                   //<< modbus_strerror(errno) << std::endl;
         return NAN;
@@ -50,38 +60,79 @@ float read_float_inverse(modbus_t* ctx, int addr) {
     return result;
 }
 
-// void guardar_datos_csv(const std::vector<float>& datos) {
-//     std::ofstream archivo("datos_sensor.csv", std::ios::app);
 
-//     if (!archivo.is_open()) {
-//         std::cerr << "No se pudo abrir el archivo CSV para escritura.\n";
-//         return;
-//     }
+#ifdef SONDA_NEW
 
-//     static bool encabezado_escrito = false;
-//     if (!encabezado_escrito) {
-//         archivo << "Tiempo,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
-//         encabezado_escrito = true;
-//     }
+// Estas funciones solo aplican para la sonda nueva
+// (No se usan todavia, pero para un futuro)
 
-//     auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-//     archivo << std::ctime(&now);
-//     for (const auto& valor : datos) {
-//         archivo << "," << valor;
-//     }
-//     archivo << "\n";
+// Cambia la hora del sistema remoto (3 registros: yymm, ddhh, mmss)
+bool change_time(modbus_t* ctx,
+                 uint16_t year, uint16_t month, uint16_t day,
+                 uint16_t hour, uint16_t minute, uint16_t second){
+    uint16_t regs_time[3];
 
-//     archivo.close();
-// }
+    uint16_t yy = year % 100;
+    regs_time[0] = (yy << 8) | month;        // yymm
+    regs_time[1] = (day << 8) | hour;        // ddhh
+    regs_time[2] = (minute << 8) | second;   // mmss
 
+    int n = modbus_write_registers(ctx, REG_TIME_BASE, 3, regs_time);
+    if (n == -1) {
+        std::cerr << "Error writing time: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    std::cout << "[OK] Time set: "
+              << std::setfill('0') << std::setw(2) << yy << "/"
+              << std::setw(2) << month << " "
+              << std::setw(2) << day << " "
+              << std::setw(2) << hour << ":"
+              << std::setw(2) << minute << ":"
+              << std::setw(2) << second << std::endl;
+    return true;
+}
+
+
+// Cambia el modo de adquisición (puntual / continuo) y el periodo
+bool change_mode(modbus_t* ctx, uint8_t mode, uint16_t period_ms){
+    // mode: 0 = puntual, 1 = continuo
+    uint16_t reg_type[1]   = { mode };
+    uint16_t reg_period[1] = { period_ms };
+    uint16_t reg_confirm[1]= { 0x01 };
+
+    int n;
+
+    n = modbus_write_registers(ctx, REG_MODE, 1, reg_type);
+    if (n == -1) {
+        std::cerr << "Error writing mode: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    n = modbus_write_registers(ctx, REG_PERIOD, 1, reg_period);
+    if (n == -1) {
+        std::cerr << "Error writing period: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    n = modbus_write_registers(ctx, REG_CONFIRM, 1, reg_confirm);
+    if (n == -1) {
+        std::cerr << "Error writing confirm: " << modbus_strerror(errno) << std::endl;
+        return false;
+    }
+
+    std::cout << "[OK] Mode set to "
+              << (mode == 0 ? "Punctual" : "Continuous")
+              << " | Period = " << period_ms << " ms" << std::endl;
+    return true;
+}
+
+#endif // SONDA_NEW
 
 std::ofstream createCSV_probe(std::string time_string) {
     
-    // No estoy comprobando si existe la carpeta
-
-    // Fecha/hora actual
-    // auto t = std::time(nullptr);
-    // std::tm tm = *std::localtime(&t);
+    // Asegurarse que exista la carpeta
+    std::filesystem::create_directories("logs/sonda");
 
     std::ostringstream filename;
     // printf("Profile %d \n", profile);
@@ -98,11 +149,10 @@ std::ofstream createCSV_probe(std::string time_string) {
     }
 
     // Cabecera
-    file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
+    file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl,C\n";
 
     return file;
 }
-
 
 
 void appendToCSV_probe(std::ofstream& file, const std::vector<float>& datos, uint8_t profile) {
@@ -140,7 +190,6 @@ void sonda() {
 
     std::ofstream sondaFile;  // Crea el CSV (uno por perfil), se crean mas adelante
     bool measure_flag = false;
-    // uint8_t profile = 0; // Now global (delete)
 
     //std::cout << "[INFO] Iniciando lectura en hilo. Presiona Ctrl+C para salir...\n";
 
@@ -153,6 +202,11 @@ void sonda() {
             datos.push_back(valor);
         }
 
+        // Añadir un elemento al vector con valor NaN (para la sonda vieja)
+        if (datos.size() < 8) {
+            datos.push_back(NAN);
+        }
+
         prof= datos[0];
         //std::cout << "Profundidad:     " << datos[0] << "\n";
 
@@ -163,7 +217,8 @@ void sonda() {
         else if(prof < 0){
             prof = abs(prof);
             //prof = 0.0;
-        }*/
+        }
+        */
 
         
         
@@ -174,7 +229,8 @@ void sonda() {
         std::cout << "DO:              " << datos[4] << "\n";
         std::cout << "Blue:            " << datos[5] << "\n";
         std::cout << "Chl:             " << datos[6] << "\n";
-        
+        std::cout << "C:               " << datos[7] << "\n \n";
+        */
         
 
         // Almacenamiento en el csv
