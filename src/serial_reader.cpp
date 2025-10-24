@@ -137,9 +137,9 @@ bool parseLogMessage(const uint8_t* data, size_t len, LogMessage& out) {
 }
 
 
-void sendOKMessage(int fd, uint16_t depth, int ft, int home) {
+void sendOKMessage(int fd, int16_t depth, int ft, int home) {
     
-    // printf("Profundidad a enviar: %d \n", depth);
+    //printf("Profundidad a enviar: %d \n", depth);
     uint8_t message[13];
     uint16_t timestamp = 0; // Ignoramos el tiempo
     message[0] = 'R'; // Byte de sincronía
@@ -306,7 +306,7 @@ void leerSerial(int &st, int &sp, int &tem, float& pr, int& tm, int &ft, int &ho
         // ENVIO DE MENSAJES A PAPARAZZI
         // Hay que mandar prof*1000 (en mm) 
         // int prof1 = ((rand()%20)*1000); // TEST, BORRAR
-        uint16_t prof_send = (uint16_t)(prof*1000);
+        int16_t prof_send = (int16_t)(prof*1000);
         // printf("Profundidad Enviada: %d \n", prof_send);
         sendOKMessage(serial_port, prof_send, ft, home);
 

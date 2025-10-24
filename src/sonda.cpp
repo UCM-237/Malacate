@@ -64,6 +64,7 @@ float read_float_inverse(modbus_t* ctx, int addr) {
 #ifdef SONDA_NEW
 
 // Estas funciones solo aplican para la sonda nueva
+// (No se usan todavia, pero para un futuro)
 
 // Cambia la hora del sistema remoto (3 registros: yymm, ddhh, mmss)
 bool change_time(modbus_t* ctx,
@@ -130,11 +131,8 @@ bool change_mode(modbus_t* ctx, uint8_t mode, uint16_t period_ms){
 
 std::ofstream createCSV_probe(std::string time_string) {
     
-    // No estoy comprobando si existe la carpeta
-
-    // Fecha/hora actual
-    // auto t = std::time(nullptr);
-    // std::tm tm = *std::localtime(&t);
+    // Asegurarse que exista la carpeta
+    std::filesystem::create_directories("logs/sonda");
 
     std::ostringstream filename;
     // printf("Profile %d \n", profile);
@@ -151,11 +149,7 @@ std::ofstream createCSV_probe(std::string time_string) {
     }
 
     // Cabecera
-    #ifdef SONDA_OLD
-        file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl\n";
-    #elif defined(SONDA_NEW)
-        file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl,C\n";
-    #endif
+    file << "Tiempo,Perfil,Profundidad,Temperatura,pH,DO_SAT,DO,Blue,Chl,C\n";
 
     return file;
 }
@@ -196,7 +190,6 @@ void sonda() {
 
     std::ofstream sondaFile;  // Crea el CSV (uno por perfil), se crean mas adelante
     bool measure_flag = false;
-    // uint8_t profile = 0; // Now global (delete)
 
     //std::cout << "[INFO] Iniciando lectura en hilo. Presiona Ctrl+C para salir...\n";
 
@@ -209,19 +202,26 @@ void sonda() {
             datos.push_back(valor);
         }
 
+        // Añadir un elemento al vector con valor NaN (para la sonda vieja)
+        if (datos.size() < 8) {
+            datos.push_back(NAN);
+        }
+
         prof= datos[0];
         //std::cout << "Profundidad:     " << datos[0] << "\n";
 
         if (isnan(prof)){
             prof=0.0;
         }
+	    /*
         else if(prof < 0){
-            // prof = abs(prof);
-            prof = 0.0;
+            prof = abs(prof);
+            //prof = 0.0;
         }
+        */
 
         
-        /*
+        
         std::cout << "Profundidad:     " << datos[0] << "\n";
         std::cout << "Temperatura:     " << datos[1] << "\n";
         std::cout << "pH:              " << datos[2] << "\n";
