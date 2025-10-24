@@ -159,13 +159,14 @@ void sonda() {
         if (isnan(prof)){
             prof=0.0;
         }
+	    /*
         else if(prof < 0){
-            // prof = abs(prof);
-            prof = 0.0;
-        }
+            prof = abs(prof);
+            //prof = 0.0;
+        }*/
 
         
-        /*
+        
         std::cout << "Profundidad:     " << datos[0] << "\n";
         std::cout << "Temperatura:     " << datos[1] << "\n";
         std::cout << "pH:              " << datos[2] << "\n";
@@ -173,20 +174,21 @@ void sonda() {
         std::cout << "DO:              " << datos[4] << "\n";
         std::cout << "Blue:            " << datos[5] << "\n";
         std::cout << "Chl:             " << datos[6] << "\n";
-        */
+        
         
 
         // Almacenamiento en el csv
         // prof = 5;  // For testing in the lab
         if(sessionReady.load()){
-            if (prof != 0){
-                uint8_t perfil_actual = currentProfile.load();
-                if (!measure_flag){
-                    sondaFile = createCSV_probe(sessionTimestamp);
-                    measure_flag = true;
-                }
-                appendToCSV_probe(sondaFile, datos, perfil_actual);
+            uint8_t perfil_actual = currentProfile.load();
+            if (prof <= 0){
+                perfil_actual = 0;
             }
+            if (!measure_flag){
+                sondaFile = createCSV_probe(sessionTimestamp);
+                measure_flag = true;
+            }
+            appendToCSV_probe(sondaFile, datos, perfil_actual);
         }
         
         sleep(5);
