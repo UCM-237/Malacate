@@ -1,8 +1,8 @@
 # Malacate
 
-Codigo para utilizar la grua sensor (malacate) de los barcos. Maneja el motor y la comunicacion serie con el autopiloto, y graba los logs locales.
+Código para utilizar la grúa sensor (malacate) de los barcos. Maneja el motor y la comunicación serie con el autopiloto, y graba los logs locales.
 
-Esta rama corresponde a la nueva sonda, con el sensor de conductividad (que tiene un protocolo de comunicación diferente).
+Esta versión es compatible con la nueva sonda, con el sensor de conductividad y con el nuevo protocolo de comunicación.
 
 ## Instalación y uso
 

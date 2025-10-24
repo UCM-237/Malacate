@@ -230,7 +230,6 @@ void sonda() {
         std::cout << "Blue:            " << datos[5] << "\n";
         std::cout << "Chl:             " << datos[6] << "\n";
         std::cout << "C:               " << datos[7] << "\n \n";
-        */
         
 
         // Almacenamiento en el csv
