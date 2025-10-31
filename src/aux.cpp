@@ -4,11 +4,11 @@
 
 
 #define Di 6.0   // Diametro interior del tambor en cm
-#define M 8.2    // Longitud del carrete 
+#define M 6.0    // Longitud del carrete (cambiado para que cuadre) 
 #define e 0.4
 
-#define L_MAX 17.0        // Longitud del cable (REVISAR)
-#define N_MAX 4.0         // Numero maximo de espiras (REVISAR)
+#define L_MAX 21.0        // Longitud del cable
+#define N_MAX 6.62         // Numero maximo de espiras (REVISAR)
 
 int calcularVueltas(float prr){
 
